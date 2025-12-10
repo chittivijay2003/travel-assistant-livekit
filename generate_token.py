@@ -14,11 +14,9 @@ load_dotenv()
 
 async def dispatch_agent_to_room(room_name: str = None):
     """Dispatch agent to a specific room."""
-    # Always create unique room name to avoid stale dispatches
+    # Use simple fixed room name for testing
     if room_name is None:
-        import time
-
-        room_name = f"agent-room-{int(time.time())}"
+        room_name = "travel-demo-room"
 
     url = get_livekit_url()
     api_key = os.environ.get("LIVEKIT_API_KEY")
@@ -38,7 +36,7 @@ async def dispatch_agent_to_room(room_name: str = None):
         # Dispatch agent to the room
         await livekit_api.agent_dispatch.create_dispatch(
             api.CreateAgentDispatchRequest(
-                room=room_name, agent_name="travel-assistant"
+                room=room_name, agent_name="test-assistant-travel"
             )
         )
         print(f"✓ Agent dispatched to room: {room_name}")

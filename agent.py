@@ -246,19 +246,50 @@ class LangGraphLLMAdapter(llm.LLM):
         **kwargs,
     ) -> llm.LLMStream:
         """Process chat through LangGraph and return LLMStream."""
-        # TESTING: Return static response to test TTS
-        static_response = "Hello! I am your travel assistant. I can hear you and I am working fine. How can I help you plan your trip today?"
+        # Extract user message from chat context
+        user_message = ""
+        for item in reversed(chat_ctx.items):
+            if item.role == "user":
+                if isinstance(item.content, str):
+                    user_message = item.content
+                elif isinstance(item.content, list):
+                    for part in item.content:
+                        if isinstance(part, dict) and part.get("type") == "text":
+                            user_message = part.get("text", "")
+                            break
+                        elif isinstance(part, str):
+                            user_message = part
+                            break
+                    if not user_message:
+                        user_message = " ".join(
+                            str(p) for p in item.content if isinstance(p, str)
+                        )
+                else:
+                    user_message = str(item.content)
+                break
 
-        # Update context with static response (content must be a list)
-        chat_ctx.items.append(
-            llm.ChatMessage(
-                role="assistant", content=[{"type": "text", "text": static_response}]
-            )
+        if not user_message:
+            user_message = "Hello"
+
+        user_message = str(user_message)
+
+        # Get response from your LangGraph
+        print(f"\n🔵 CALLING LANGGRAPH with message: {user_message[:100]}...")
+        langgraph_response = self.graph.invoke(user_message)
+        print(f"🟢 LANGGRAPH RESPONSE: {langgraph_response[:100]}...\n")
+
+        # Create a simple context with just the LangGraph response
+        # The content needs to be a string for OpenAI LLM
+        simple_ctx = llm.ChatContext()
+        simple_ctx.items.append(llm.ChatMessage(role="user", content=user_message))
+        simple_ctx.items.append(
+            llm.ChatMessage(role="assistant", content=langgraph_response)
         )
 
-        # Return OpenAI LLM stream to speak the response
+        # Use OpenAI to convert the response to speech
+        # Pass tools=None so it just converts to speech without re-processing
         return openai.LLM(model="gpt-4o-mini").chat(
-            chat_ctx=chat_ctx, tools=tools, tool_choice=tool_choice, **kwargs
+            chat_ctx=simple_ctx, tools=None, **kwargs
         )
 
 
@@ -270,13 +301,14 @@ def create_langgraph_adapter():
 
 def create_voice_agent() -> Agent:
     """Create and configure the voice pipeline agent."""
-    # TESTING: Use OpenAI directly to test TTS
+    # Create LangGraph adapter
+    langgraph_llm = create_langgraph_adapter()
     return Agent(
-        instructions="You are a helpful travel assistant. Always respond with: 'Hello! I am your travel assistant. I can hear you and I am working fine. How can I help you plan your trip today?' - Say only this exact message every time.",
         vad=silero.VAD.load(),
         stt=openai.STT(),
-        llm=openai.LLM(model="gpt-4o-mini"),  # Use OpenAI directly for testing
+        llm=langgraph_llm,
         tts=openai.TTS(),
+        instructions="You are a travel assistant. Keep responses brief and conversational.",
     )
 
 
@@ -284,22 +316,23 @@ def create_voice_agent() -> Agent:
 server = AgentServer()
 
 
-@server.rtc_session(agent_name="travel-assistant")
+@server.rtc_session(agent_name="test-assistant-travel")
 async def entrypoint(ctx: JobContext):
     """Main entry point for the agent - registered with agent_name."""
-    await ctx.connect(auto_subscribe=AutoSubscribe.AUDIO_ONLY)
+    print(f"🔥 Agent received job for room: {ctx.room.name}")
 
-    # Start voice assistant
-    assistant = Agent(
-        vad=silero.VAD.load(),
-        stt=openai.STT(),
-        llm=openai.LLM(model="gpt-4o-mini"),
-        tts=openai.TTS(),
-        instructions="You are a helpful travel assistant. Respond naturally to questions about travel destinations, planning, and recommendations.",
-    )
+    await ctx.connect(auto_subscribe=AutoSubscribe.AUDIO_ONLY)
+    print(f"✅ Connected to room: {ctx.room.name}")
+
+    # Create voice assistant with LangGraph
+    print("🔧 Creating voice agent...")
+    assistant = create_voice_agent()
+    print("✓ Voice agent created")
 
     session = AgentSession()
+    print("🚀 Starting session...")
     await session.start(assistant, room=ctx.room)
+    print("✓ Session started")
 
 
 if __name__ == "__main__":
