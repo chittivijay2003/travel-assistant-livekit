@@ -287,26 +287,19 @@ server = AgentServer()
 @server.rtc_session(agent_name="travel-assistant")
 async def entrypoint(ctx: JobContext):
     """Main entry point for the agent - registered with agent_name."""
-    print(f"🔥 Agent received job for room: {ctx.room.name}")
-
     await ctx.connect(auto_subscribe=AutoSubscribe.AUDIO_ONLY)
-    print(f"✅ Connected to room!")
 
-    # Create the agent configuration
-    agent = Agent(
-        instructions="You are a helpful travel assistant. Respond naturally to questions about travel destinations, planning, and recommendations.",
+    # Start voice assistant
+    assistant = Agent(
         vad=silero.VAD.load(),
         stt=openai.STT(),
         llm=openai.LLM(model="gpt-4o-mini"),
         tts=openai.TTS(),
+        instructions="You are a helpful travel assistant. Respond naturally to questions about travel destinations, planning, and recommendations.",
     )
 
-    # Create and start session with the agent
     session = AgentSession()
-
-    print("🚀 Starting agent session...")
-    await session.start(agent=agent, room=ctx.room)
-    print("✅ Session completed!")
+    await session.start(assistant, room=ctx.room)
 
 
 if __name__ == "__main__":

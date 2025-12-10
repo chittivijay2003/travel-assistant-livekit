@@ -12,8 +12,14 @@ from agent import generate_token, get_livekit_url
 load_dotenv()
 
 
-async def dispatch_agent_to_room(room_name: str = "test-room"):
+async def dispatch_agent_to_room(room_name: str = None):
     """Dispatch agent to a specific room."""
+    # Always create unique room name to avoid stale dispatches
+    if room_name is None:
+        import time
+
+        room_name = f"agent-room-{int(time.time())}"
+
     url = get_livekit_url()
     api_key = os.environ.get("LIVEKIT_API_KEY")
     api_secret = os.environ.get("LIVEKIT_API_SECRET")
@@ -37,18 +43,21 @@ async def dispatch_agent_to_room(room_name: str = "test-room"):
         )
         print(f"✓ Agent dispatched to room: {room_name}")
 
+        return room_name  # Return the room name
+
     except Exception as e:
         print(f"✗ Failed to dispatch agent: {e}")
+        raise
     finally:
         await livekit_api.aclose()
 
 
 def print_playground_instructions(
-    room_name: str = "test-room", participant_name: str = "user-1"
+    room_name: str = None, participant_name: str = "user-1"
 ):
     """Generate and display token with playground instructions."""
-    # Dispatch agent to room
-    asyncio.run(dispatch_agent_to_room(room_name))
+    # Dispatch agent to room (will create unique room if None)
+    room_name = asyncio.run(dispatch_agent_to_room(room_name))
 
     # Generate token
     jwt_token = generate_token(room_name, participant_name)
