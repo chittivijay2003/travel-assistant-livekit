@@ -1,9 +1,26 @@
 """
-LangGraph Agent for Travel Assistant
-Extracted from D8 Multi-Model Orchestration Assignment
+LangGraph Multi-Model Agent for Travel Assistant.
 
-This module provides a simplified interface for multi-model orchestration
-using LangChain models with router pattern for intelligent model selection.
+Extracted and adapted from Assignment D8 (Multi-Model Orchestration)
+
+This module implements an intelligent multi-model routing system that selects
+the most appropriate LLM based on query characteristics. It uses heuristic-based
+routing to choose between Gemini 2.5 Flash (for simple queries) and Gemini 2.5 Pro
+(for complex reasoning, technical, or creative queries).
+
+Architecture:
+    1. Query Classification: Heuristics identify query type (simple/complex/technical/creative)
+    2. Model Selection: Router chooses optimal model based on classification
+    3. Response Generation: Selected model processes query and returns response
+    4. Conversation History: All interactions are logged with model attribution
+
+Models Used:
+    - Gemini 2.5 Flash: Fast, efficient for simple factual queries
+    - Gemini 2.5 Pro: Advanced reasoning for complex queries
+
+Integration:
+    - Used by agent.py through LangGraphLLMAdapter
+    - Provides create_graph() entry point for LiveKit integration
 """
 
 import os
@@ -21,25 +38,44 @@ load_dotenv()
 
 
 def setup_models():
-    """Initialize and return all LLM models used in the agent."""
+    """Initialize and configure all LLM models for multi-model routing.
+
+    Creates instances of Gemini 2.5 Flash and Pro models with optimized
+    configurations. Flash is used for quick, factual responses while Pro
+    handles complex reasoning tasks.
+
+    Returns:
+        dict: Dictionary mapping model names to initialized ChatGoogleGenerativeAI instances
+              Keys: 'gemini_25_flash', 'gemini_25_pro'
+
+    Raises:
+        ValueError: If GOOGLE_API_KEY environment variable is not set
+
+    Note:
+        Temperature is set to 0.7 for balanced creativity and coherence.
+        System messages are converted to human format for Gemini compatibility.
+    """
+    # Retrieve Google API key from environment
     api_key = os.getenv("GOOGLE_API_KEY")
 
     if not api_key:
         raise ValueError("GOOGLE_API_KEY environment variable is required")
 
-    # Initialize Gemini models with different configurations
+    # Initialize both Gemini models with consistent configuration
     models = {
+        # Fast model for simple queries (weather, facts, definitions)
         "gemini_25_flash": ChatGoogleGenerativeAI(
             model="gemini-2.5-flash",
             google_api_key=api_key,
-            temperature=0.7,
-            convert_system_message_to_human=True,
+            temperature=0.7,  # Balanced creativity
+            convert_system_message_to_human=True,  # Gemini compatibility
         ),
+        # Advanced model for complex reasoning (analysis, comparisons, technical)
         "gemini_25_pro": ChatGoogleGenerativeAI(
             model="gemini-2.5-pro",
             google_api_key=api_key,
-            temperature=0.7,
-            convert_system_message_to_human=True,
+            temperature=0.7,  # Balanced creativity
+            convert_system_message_to_human=True,  # Gemini compatibility
         ),
     }
 
@@ -52,12 +88,31 @@ def setup_models():
 
 
 def is_simple_query(text: str) -> bool:
-    """Detect if a query is simple/factual (short, direct questions)."""
+    """Detect if a query is simple/factual requiring fast response.
+
+    Simple queries are typically:
+    - Short (8 words or less)
+    - Direct questions (what/who/when/where)
+    - Requesting facts, definitions, or basic information
+
+    These queries are routed to Gemini Flash for quick responses.
+
+    Args:
+        text: User query text
+
+    Returns:
+        bool: True if query appears to be simple/factual, False otherwise
+
+    Examples:
+        - "What is the capital of France?" -> True
+        - "How many continents are there?" -> True
+        - "Explain quantum mechanics" -> False
+    """
     text_lower = text.lower().strip()
 
-    # Check length - simple queries are usually short
+    # Simple queries are typically concise (8 words or fewer)
     if len(text.split()) <= 8:
-        # Check for simple question patterns
+        # Patterns indicating simple factual questions
         simple_patterns = [
             "what is",
             "who is",
@@ -81,22 +136,44 @@ def is_simple_query(text: str) -> bool:
 
 
 def is_complex_query(text: str) -> bool:
-    """Detect if a query requires deep reasoning or explanation."""
+    """Detect if a query requires deep reasoning or detailed explanation.
+
+    Complex queries typically involve:
+    - Explanations of concepts or processes
+    - Analytical thinking (compare, contrast, analyze)
+    - Cause-and-effect reasoning
+    - Step-by-step instructions
+    - Understanding relationships and implications
+
+    These queries are routed to Gemini Pro for advanced reasoning.
+
+    Args:
+        text: User query text
+
+    Returns:
+        bool: True if query requires complex reasoning, False otherwise
+
+    Examples:
+        - "Explain how machine learning works" -> True
+        - "Compare Python and JavaScript" -> True
+        - "What is Python?" -> False
+    """
     text_lower = text.lower().strip()
 
+    # Keywords indicating need for deep reasoning or analysis
     complex_indicators = [
-        "explain",
-        "why",
-        "how does",
+        "explain",  # Requests for explanations
+        "why",  # Causal reasoning
+        "how does",  # Process understanding
         "how do",
-        "reasoning",
-        "step by step",
-        "analyze",
-        "compare",
+        "reasoning",  # Explicit reasoning request
+        "step by step",  # Detailed procedures
+        "analyze",  # Analytical thinking
+        "compare",  # Comparative analysis
         "contrast",
         "differences between",
         "relationship between",
-        "implications",
+        "implications",  # Understanding consequences
         "consequences",
         "effect of",
     ]
@@ -186,16 +263,25 @@ def route_query(user_query: str, models: Dict[str, Any]) -> Dict[str, Any]:
         chosen_model_name = "gemini_25_flash"
         reason = "General query - using Gemini 2.5 Flash"
 
+    # Log model selection
+    print("🤖 MODEL ROUTING:")
+    print(f"   Query: {user_query[:100]}...")
+    print(f"   Selected: {chosen_model_name.upper()}")
+    print(f"   Reason: {reason}")
+
     # Get the chosen model
     chosen_model = models[chosen_model_name]
 
     # Call the model
     try:
+        print(f"📞 CALLING {chosen_model_name}...")
         response = chosen_model.invoke(user_query)
         response_text = (
             response.content if hasattr(response, "content") else str(response)
         )
+        print(f"✅ {chosen_model_name} RESPONDED (length={len(response_text)})")
     except Exception as e:
+        print(f"❌ ERROR from {chosen_model_name}: {str(e)}")
         response_text = f"Error calling model: {str(e)}"
 
     return {
@@ -231,6 +317,10 @@ class TravelAssistantGraph:
         Returns:
             str: The agent's response
         """
+        print("\n" + "=" * 70)
+        print("🔷 LANGGRAPH INVOKE STARTED")
+        print("=" * 70)
+
         # Route the query to the appropriate model
         result = route_query(user_input, self.models)
 
@@ -243,6 +333,11 @@ class TravelAssistantGraph:
                 "reason": result["reason"],
             }
         )
+
+        print("=" * 70)
+        print(f"🔶 FINAL RESULT: Using {result['chosen_model'].upper()}")
+        print(f"   Response preview: {result['response'][:100]}...")
+        print("=" * 70 + "\n")
 
         return result["response"]
 

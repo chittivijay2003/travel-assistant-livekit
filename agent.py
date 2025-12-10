@@ -1,185 +1,18 @@
-# LiveKit Voice Agent Assignment
+"""LiveKit Voice Agent with LangGraph Integration
 
-## Introduction
+This module implements a voice-enabled AI agent using LiveKit's real-time
+communication platform integrated with a LangGraph multi-model orchestration
+system. The agent handles voice input/output and routes queries through
+multiple LLM models based on query complexity.
 
-"""
-Welcome to the LiveKit Voice Agent assignment! In this assignment, you will build a **voice-to-voice conversational AI agent** using LiveKit's real-time communication infrastructure, integrating the **LangGraph agent you built in your previous assignment**.
-"""
+Key Components:
+    - Voice pipeline with VAD, STT, LLM, and TTS
+    - LangGraph adapter for multi-model orchestration
+    - SimpleLLMStream for streaming responses
+    - LiveKit server setup and room management
 
-### What is LiveKit?
+Author: Assignment D9 - LiveKit Voice Agent
 """
-LiveKit is an open-source platform for building real-time audio/video applications. It uses:
-- **Rooms**: Virtual spaces where participants connect
-- **WebSocket connections**: For signaling and real-time communication
-- **Tokens**: JWT-based authentication for secure room access
-"""
-### Assignment Objectives
-"""
-By completing this assignment, you will:
-1. Set up a LiveKit development environment
-2. Create a voice agent that connects to LiveKit rooms
-3. **Integrate your LangGraph agent via the LLM adapter**
-4. Implement voice-to-voice interaction
-5. Test your implementation using pytest
-6. Record a demo of your working agent with the LiveKit Playground
-
----
-"""
-## Part 1: Environment Setup
-
-### Prerequisites
-"""
-- Python 3.9+
-- Docker (for running LiveKit server locally) OR LiveKit Cloud account
-- Your LangGraph agent from the previous assignment
-- Google Cloud account (for STT/TTS services)
-"""
-### Step 1: Install Dependencies
-"""
-Run the following command to install all required packages:
-
-```bash
-pip install livekit \
-    livekit-agents \
-    livekit-plugins-google \
-    livekit-plugins-silero \
-    livekit-plugins-langgraph
-    langgraph \
-    langchain \
-    langchain-google-genai \
-    python-dotenv \
-    pytest \
-    pytest-asyncio
-```
-"""
-
-### Step 2: Configure Environment Variables
-"""
-Create a `.env` file in your submission directory with the following variables:
-
-```bash
-"""
-# LiveKit Configuration
-# For local: ws://localhost:7880
-# For cloud: wss://your-project.livekit.cloud
-"""
-LIVEKIT_URL=wss://your-project.livekit.cloud
-LIVEKIT_API_KEY=your_api_key
-LIVEKIT_API_SECRET=your_api_secret
-"""
-# Google Cloud Configuration (for STT/TTS)
-"""
-GOOGLE_API_KEY=your_google_api_key
-```
-"""
-"""
-**Important Notes:**
-- For local development, run LiveKit server using Docker:
-  ```bash
-  docker run --rm -p 7880:7880 -p 7881:7881 -p 7882:7882/udp \
-      -e LIVEKIT_KEYS="devkey: secret" \
-      livekit/livekit-server \
-      --dev --bind 0.0.0.0
-  ```
-- For cloud deployment, sign up at [LiveKit Cloud](https://cloud.livekit.io)
-- Get your Google API key from [Google AI Studio](https://aistudio.google.com/)
-
----
-"""
-## Part 2: Assignment Requirements
-
-### Your Task
-"""
-Create a **voice agent** that:
-
-1. **Connects to a LiveKit room** via WebSocket URL and Token
-2. **Listens to user speech** using Voice Activity Detection (VAD)
-3. **Transcribes speech to text** using Speech-to-Text (STT)
-4. **Processes the text using your LangGraph agent** via the LLM adapter
-5. **Converts responses to speech** using Text-to-Speech (TTS)
-6. **Plays audio back** to the user in real-time
-
----
-"""
-## Part 3: Directory Structure (IMPORTANT)
-"""
-**You MUST maintain the following directory structure exactly:**
-
-```
-your_submission/
-├── agent.py              # Main agent implementation (REQUIRED)
-├── langgraph_agent.py    # Your LangGraph agent from previous assignment (REQUIRED)
-├── requirements.txt      # Dependencies list (REQUIRED)
-├── .env                  # Environment variables (REQUIRED - will be replaced during testing)
-├── .env.example          # Template showing required env vars (REQUIRED)
-└── demo.mp4              # Screen recording of your working agent (REQUIRED)
-```
-
-**Failure to maintain this structure will result in test failures!**
-
----
-"""
-## Part 4: Required Components
-
-### Components in agent.py
-"""
-Your `agent.py` must implement:
-
-| Function/Class | Description |
-|----------------|-------------|
-| `get_livekit_url()` | Returns the WebSocket URL for LiveKit from environment |
-| `generate_token(room_name, participant_name)` | Generates a valid JWT token for room access |
-| `LangGraphLLMAdapter` class | LLM adapter class that wraps your LangGraph agent |
-| `create_langgraph_adapter()` | Creates an instance of the LLM adapter |
-| `create_voice_agent()` | Creates and returns a configured VoicePipelineAgent |
-| `entrypoint(ctx)` | Async function - main entry point for the agent |
-"""
-### LangGraph LLM Adapter Pattern
-"""
-You must use the **LLM adapter pattern** to integrate your LangGraph agent:
-
-# TEMPLATE CODE BELOW - SEE PART 5 FOR ACTUAL IMPLEMENTATION
-"""
-# ```python
-# from livekit.agents import llm
-#
-#
-# class LangGraphLLMAdapter(llm.LLM):
-#     """Adapter to use LangGraph agent as an LLM in the voice pipeline."""
-#
-#     def __init__(self, langgraph_agent):
-#         super().__init__()
-#         self.agent = langgraph_agent
-#
-#     async def chat(
-#         self,
-#         chat_ctx: llm.ChatContext,
-#         fnc_ctx: llm.FunctionContext | None = None,
-#         temperature: float | None = None,
-#         n: int | None = None,
-#         parallel_tool_calls: bool | None = None,
-#     ) -> llm.LLMStream:
-#         # TODO Extract user message from chat_ctx
-#         # TODO Process through your LangGraph agent
-#         # TODO Return response wrapped in LLMStream
-#         pass
-# ```
-"""
-
-This pattern allows your existing LangGraph agent to be used seamlessly in the LiveKit voice pipeline.
-This pattern allows your existing LangGraph agent to be used seamlessly in the LiveKit voice pipeline.
-
----
-"""
-## Part 5: Code Template
-"""
-Here's a skeleton to get you started:
-
-```python
-"""
-# ============================================================================
-# ACTUAL IMPLEMENTATION - LiveKit Voice Agent
-# ============================================================================
 
 import os
 from dotenv import load_dotenv
@@ -195,14 +28,22 @@ from livekit.agents import (
 from livekit.agents.voice import Agent, AgentSession
 from livekit.plugins import openai, silero
 
-# Import your LangGraph agent from previous assignment
-from langgraph_agent import create_graph, invoke_graph
+# Import LangGraph agent from previous assignment (D8)
+from langgraph_agent import create_graph
 
+# Load environment variables from .env file
 load_dotenv()
 
 
 def get_livekit_url() -> str:
-    """Return the LiveKit WebSocket URL from environment."""
+    """Retrieve LiveKit WebSocket URL from environment variables.
+
+    Returns:
+        str: LiveKit server WebSocket URL (wss://...)
+
+    Raises:
+        ValueError: If LIVEKIT_URL environment variable is not set
+    """
     url = os.environ.get("LIVEKIT_URL")
     if not url:
         raise ValueError("LIVEKIT_URL environment variable is required")
@@ -210,30 +51,145 @@ def get_livekit_url() -> str:
 
 
 def generate_token(room_name: str, participant_name: str) -> str:
-    """Generate a JWT token for room access."""
+    """Generate a JWT access token for LiveKit room authentication.
+
+    Creates a signed JWT token with room access permissions including
+    audio/video publishing and subscribing capabilities. Token is valid
+    for 1 hour.
+
+    Args:
+        room_name: Name of the LiveKit room to grant access to
+        participant_name: Unique identifier for the participant
+
+    Returns:
+        str: JWT token string for room authentication
+
+    Note:
+        Requires LIVEKIT_API_KEY and LIVEKIT_API_SECRET environment variables
+    """
+    # Retrieve API credentials from environment
     api_key = os.environ.get("LIVEKIT_API_KEY")
     api_secret = os.environ.get("LIVEKIT_API_SECRET")
 
+    # Create access token with API credentials
     token = api.AccessToken(api_key, api_secret)
+
+    # Set participant identity and display name
     token.with_identity(participant_name)
     token.with_name(participant_name)
+
+    # Grant room access permissions
     token.with_grants(
         api.VideoGrants(
-            room_join=True,
-            room=room_name,
-            can_publish=True,
-            can_subscribe=True,
+            room_join=True,  # Allow joining the room
+            room=room_name,  # Specific room name
+            can_publish=True,  # Allow publishing audio/video
+            can_subscribe=True,  # Allow subscribing to other participants
         )
     )
+
+    # Set token expiration to 1 hour
     token.with_ttl(timedelta(hours=1))
 
     return token.to_jwt()
 
 
+class SimpleLLMStream(llm.LLMStream):
+    """Custom LLM stream adapter for LangGraph responses.
+
+    This class wraps pre-generated text from LangGraph into a streaming
+    format compatible with LiveKit's voice pipeline. It handles the conversion
+    of LangGraph responses (which may be strings or lists) into proper
+    ChatChunk objects for the TTS system.
+
+    Attributes:
+        _text: The pre-generated response text from LangGraph
+    """
+
+    def __init__(
+        self,
+        text: str,
+        llm_instance: llm.LLM,
+        chat_ctx: llm.ChatContext,
+        tools: list | None = None,
+        conn_options: dict | None = None,
+    ):
+        """Initialize the stream with pre-generated text.
+
+        Args:
+            text: Response text from LangGraph (string or list)
+            llm_instance: Parent LLM instance (LangGraphLLMAdapter)
+            chat_ctx: Chat context with conversation history
+            tools: Optional tool definitions (unused in this implementation)
+            conn_options: Optional connection options
+        """
+        # Initialize parent LLMStream with required parameters
+        super().__init__(
+            llm=llm_instance, chat_ctx=chat_ctx, tools=tools, conn_options=conn_options
+        )
+        # Store the response text for streaming
+        self._text = text
+
+    async def _run(self) -> None:
+        """Generate and send chat chunks through the event channel.
+
+        This is the required abstract method from LLMStream. It converts
+        the pre-generated LangGraph response into a ChatChunk object and
+        sends it through the event channel for TTS processing.
+
+        The method handles:
+        - List-to-string conversion for LangGraph list responses
+        - UUID generation for chunk identification
+        - Proper ChatChunk structure with ChoiceDelta
+        """
+        import uuid
+
+        # Convert text to string format (handle various response types from LangGraph)
+        text_content = self._text
+        if isinstance(text_content, list):
+            # LangGraph sometimes returns lists - join them into a string
+            text_content = " ".join(str(item) for item in text_content)
+        elif not isinstance(text_content, str):
+            # Convert any other type to string
+            text_content = str(text_content)
+
+        # Send the response as a single ChatChunk through the event channel
+        # This will be picked up by the TTS system for voice synthesis
+        self._event_ch.send_nowait(
+            llm.ChatChunk(
+                id=str(uuid.uuid4()),  # Unique identifier for this chunk
+                delta=llm.ChoiceDelta(content=text_content, role="assistant"),
+            )
+        )
+
+    async def aclose(self) -> None:
+        """Close the stream."""
+        await super().aclose()
+
+
 class LangGraphLLMAdapter(llm.LLM):
-    """Adapter to use LangGraph agent as LLM in voice pipeline."""
+    """Adapter connecting LangGraph multi-model system to LiveKit voice pipeline.
+
+    This adapter bridges the gap between LiveKit's LLM interface and our
+    LangGraph-based multi-model orchestration system. It receives chat contexts
+    from the voice pipeline, extracts user messages, routes them through
+    LangGraph's model selection logic, and returns streaming responses.
+
+    The adapter ensures compatibility between:
+    - LiveKit's expected LLM interface (chat method returning LLMStream)
+    - LangGraph's graph-based invoke pattern
+    - Multi-model routing (Gemini Flash/Pro selection)
+
+    Attributes:
+        graph: TravelAssistantGraph instance for multi-model orchestration
+    """
 
     def __init__(self, graph):
+        """Initialize adapter with a LangGraph instance.
+
+        Args:
+            graph: TravelAssistantGraph instance from langgraph_agent.py
+        """
         super().__init__()
         self.graph = graph
 
@@ -243,92 +199,151 @@ class LangGraphLLMAdapter(llm.LLM):
         chat_ctx: llm.ChatContext,
         tools: list | None = None,
         tool_choice: str | None = None,
+        conn_options: dict | None = None,
         **kwargs,
     ) -> llm.LLMStream:
-        """Process chat through LangGraph and return LLMStream."""
-        # Extract user message from chat context
+        """Process user input through LangGraph and return response stream.
+
+        This is the main method called by LiveKit's voice pipeline. It:
+        1. Extracts the user's message from the chat context
+        2. Routes it through LangGraph's multi-model system
+        3. Returns a SimpleLLMStream for TTS processing
+
+        Args:
+            chat_ctx: Conversation context containing message history
+            tools: Optional tool definitions (not used in this implementation)
+            tool_choice: Optional tool selection (not used)
+            conn_options: Optional connection options
+            **kwargs: Additional arguments (unused)
+
+        Returns:
+            SimpleLLMStream: Stream object containing LangGraph's response
+        """
+        # Extract the most recent user message from chat context
+        # We search in reverse order to get the latest message
         user_message = ""
         for item in reversed(chat_ctx.items):
             if item.role == "user":
+                # Handle different content formats from LiveKit
                 if isinstance(item.content, str):
+                    # Simple string content
                     user_message = item.content
                 elif isinstance(item.content, list):
+                    # Content as list of parts (multimodal format)
                     for part in item.content:
                         if isinstance(part, dict) and part.get("type") == "text":
+                            # Extract text from dictionary format
                             user_message = part.get("text", "")
                             break
                         elif isinstance(part, str):
+                            # Direct string in list
                             user_message = part
                             break
                     if not user_message:
+                        # Fallback: join all string parts
                         user_message = " ".join(
                             str(p) for p in item.content if isinstance(p, str)
                         )
                 else:
+                    # Fallback: convert to string
                     user_message = str(item.content)
                 break
 
+        # Fallback if no user message found in context
         if not user_message:
             user_message = "Hello"
 
+        # Ensure message is a string
         user_message = str(user_message)
 
-        # Get response from your LangGraph
+        # Route the message through LangGraph for multi-model processing
+        # LangGraph will select Gemini Flash or Pro based on query complexity
         print(f"\n🔵 CALLING LANGGRAPH with message: {user_message[:100]}...")
         langgraph_response = self.graph.invoke(user_message)
-        print(f"🟢 LANGGRAPH RESPONSE: {langgraph_response[:100]}...\n")
-
-        # Create a simple context with just the LangGraph response
-        # The content needs to be a string for OpenAI LLM
-        simple_ctx = llm.ChatContext()
-        simple_ctx.items.append(llm.ChatMessage(role="user", content=user_message))
-        simple_ctx.items.append(
-            llm.ChatMessage(role="assistant", content=langgraph_response)
+        print(
+            f"🟢 LANGGRAPH RESPONSE (length={len(langgraph_response)}): {langgraph_response[:200]}...\n"
         )
 
-        # Use OpenAI to convert the response to speech
-        # Pass tools=None so it just converts to speech without re-processing
-        return openai.LLM(model="gpt-4o-mini").chat(
-            chat_ctx=simple_ctx, tools=None, **kwargs
-        )
+        # Wrap the LangGraph response in a SimpleLLMStream for voice output
+        # This stream will be processed by the TTS system
+        print("🎤 Creating SimpleLLMStream with LangGraph response...")
+        return SimpleLLMStream(langgraph_response, self, chat_ctx, tools, conn_options)
 
 
 def create_langgraph_adapter():
-    """Create the LangGraph LLM adapter."""
+    """Create and initialize the LangGraph LLM adapter.
+
+    Factory function that creates a TravelAssistantGraph instance
+    and wraps it in a LangGraphLLMAdapter for use in the voice pipeline.
+
+    Returns:
+        LangGraphLLMAdapter: Configured adapter ready for voice agent
+    """
+    # Create LangGraph instance with multi-model routing
     graph = create_graph()
+    # Wrap in adapter for LiveKit compatibility
     return LangGraphLLMAdapter(graph)
 
 
 def create_voice_agent() -> Agent:
-    """Create and configure the voice pipeline agent."""
-    # Create LangGraph adapter
+    """Create and configure the complete voice pipeline agent.
+
+    Assembles the full voice agent with:
+    - VAD (Voice Activity Detection): Detects when user is speaking
+    - STT (Speech-to-Text): Converts speech to text using OpenAI Whisper
+    - LLM: Routes queries through LangGraph multi-model system
+    - TTS (Text-to-Speech): Converts responses to speech using OpenAI TTS
+
+    Returns:
+        Agent: Configured LiveKit voice agent ready for sessions
+    """
+    # Create LangGraph adapter for multi-model LLM routing
     langgraph_llm = create_langgraph_adapter()
+
+    # Assemble complete voice pipeline
     return Agent(
-        vad=silero.VAD.load(),
-        stt=openai.STT(),
-        llm=langgraph_llm,
-        tts=openai.TTS(),
+        vad=silero.VAD.load(),  # Silero VAD for voice activity detection
+        stt=openai.STT(),  # OpenAI Whisper for speech recognition
+        llm=langgraph_llm,  # LangGraph multi-model system
+        tts=openai.TTS(),  # OpenAI TTS for voice synthesis
         instructions="You are a travel assistant. Keep responses brief and conversational.",
     )
 
 
-# Create AgentServer instance
+# ============================================================================
+# Server Setup and Entry Point
+# ============================================================================
+
+# Create the LiveKit AgentServer instance
+# This server handles incoming connections and job assignments
 server = AgentServer()
 
 
 @server.rtc_session(agent_name="test-assistant-travel")
 async def entrypoint(ctx: JobContext):
-    """Main entry point for the agent - registered with agent_name."""
+    """Main entry point when agent is assigned to a room.
+
+    This function is called by LiveKit when an agent dispatch is created
+    for a room. It sets up the voice pipeline and handles the conversation.
+
+    The agent_name "test-assistant-travel" must match the name used when
+    dispatching the agent to rooms via the LiveKit API.
+
+    Args:
+        ctx: Job context containing room information and connection details
+    """
     print(f"🔥 Agent received job for room: {ctx.room.name}")
 
+    # Connect to the LiveKit room (audio only, no video)
     await ctx.connect(auto_subscribe=AutoSubscribe.AUDIO_ONLY)
     print(f"✅ Connected to room: {ctx.room.name}")
 
-    # Create voice assistant with LangGraph
+    # Create the voice agent with full pipeline (VAD -> STT -> LLM -> TTS)
     print("🔧 Creating voice agent...")
     assistant = create_voice_agent()
     print("✓ Voice agent created")
 
+    # Start the agent session to begin handling voice interactions
     session = AgentSession()
     print("🚀 Starting session...")
     await session.start(assistant, room=ctx.room)
@@ -336,193 +351,8 @@ async def entrypoint(ctx: JobContext):
 
 
 if __name__ == "__main__":
+    # Run the agent server using LiveKit's CLI
+    # This handles command line arguments and server lifecycle
+    # Usage: python agent.py dev (for development with auto-reload)
+    #        python agent.py start (for production)
     cli.run_app(server)
-
-# ============================================================================
-# END OF IMPLEMENTATION
-# ============================================================================
-"""    
-```
-
----
-"""
-## Part 6: Running Your Agent
-
-### Connecting to LiveKit
-"""
-When running your agent, you need:
-1. **WebSocket URL**: The LiveKit server URL (from `.env`)
-2. **Token**: Generated JWT token for authentication
-"""
-### Running Commands
-"""
-```bash
-# Start in development mode
-python agent.py dev
-
-# Or connect to a specific room
-python agent.py connect --room my-room
-```
-"""
-### Using LiveKit Playground
-"""
-1. Go to [LiveKit Agents Playground](https://agents-playground.livekit.io/)
-2. Enter your LiveKit WebSocket URL
-3. Generate or enter a token
-4. Connect and start talking to your agent!
-
----
-"""
-## Part 7: Demo Recording Requirements
-"""
-You must submit a **screen recording** demonstrating your voice agent working with the LiveKit Playground.
-"""
-### Steps to Record
-"""
-1. **Start your agent:**
-   ```bash
-   python agent.py dev
-   ```
-
-2. **Open LiveKit Playground:**
-   - Go to [LiveKit Playground](https://agents-playground.livekit.io/)
-   - Enter your LiveKit WebSocket URL
-   - Connect to the same room your agent is in
-
-3. **Demonstrate voice interaction:**
-   - Speak to the agent
-   - Show the agent responding with voice
-   - Have at least **3 conversation turns**
-   - Show that your LangGraph agent is processing the requests
-"""
-### Recording Requirements
-"""
-| Requirement | Details |
-|-------------|----------|
-| Duration | 1-3 minutes |
-| Format | MP4, WebM, or MOV |
-| Must Show | Playground UI, terminal running agent, audio working |
-| File Name | `demo.mp4` (or appropriate extension) |
-"""
-### Demo Checklist
-"""
-- [ ] Agent starts without errors
-- [ ] Agent connects to LiveKit room via WebSocket URL
-- [ ] Playground shows agent as a participant
-- [ ] Voice-to-voice interaction works
-- [ ] At least 3 successful conversation turns
-- [ ] Terminal shows LangGraph agent processing
-- [ ] Token authentication is working
-
----
-"""
-## Part 8: Grading Criteria
-"""
-Your submission will be graded on:
-
-| Criteria | Points | Description |
-|----------|--------|-------------|
-| **Base Tests Pass** | 30 | All base tests pass |
-| **Hidden Tests Pass** | 30 | Additional integration tests (not shared) |
-| **LangGraph Integration** | 20 | Properly uses LLM adapter to integrate your LangGraph agent |
-| **Working Demo** | 20 | Video demonstrates working voice-to-voice interaction |
-| **Total** | **100** | |
-"""
-### Important Notes
-"""
-1. **Use LLM Adapter Pattern:**
-   - You MUST wrap your LangGraph agent in an LLM adapter class
-   - The adapter must extend `livekit.agents.llm.LLM`
-   - This allows your graph to be used in the voice pipeline
-
-2. **WebSocket URL & Token:**
-   - Your agent must properly read `LIVEKIT_URL` from environment
-   - Token generation must use `livekit.api.AccessToken`
-   - Tokens must include proper room grants
-
-3. **Hidden Tests:**
-   - Will test actual agent behavior
-   - Will verify LangGraph adapter implementation
-   - Will check voice pipeline configuration
-
-4. **Directory Structure:**
-   - Must follow the exact structure specified
-   - `langgraph_agent.py` must be importable
-
----
-"""
-
-## Part 9: Submission Checklist
-"""
-Before submitting, verify:
-"""
-### Required Files
-"""
-- [ ] `agent.py` - implements all required functions and LLM adapter class
-- [ ] `langgraph_agent.py` - your LangGraph agent from previous assignment
-- [ ] `requirements.txt` - lists all dependencies including langgraph
-- [ ] `.env.example` - shows required environment variables (without actual values)
-- [ ] `demo.mp4` - screen recording of working agent
-"""
-### Code Requirements
-"""
-- [ ] `get_livekit_url()` returns WebSocket URL from environment
-- [ ] `generate_token()` creates valid JWT with room grants
-- [ ] LLM adapter class extends `llm.LLM`
-- [ ] Adapter implements `async def chat()` method
-- [ ] `create_voice_agent()` returns configured VoicePipelineAgent
-- [ ] `entrypoint()` is async and connects to room
-- [ ] Uses `python-dotenv` for environment variables
-- [ ] No hardcoded API keys or secrets
-"""
-### Demo Requirements
-"""
-- [ ] Shows agent starting successfully
-- [ ] Shows connection to LiveKit playground
-- [ ] Demonstrates at least 3 voice conversation turns
-- [ ] Shows LangGraph processing in terminal
-
----
-"""
-## Helpful Resources
-
-### Documentation
-"""
-- [LiveKit Documentation](https://docs.livekit.io/)
-- [LiveKit Agents Documentation](https://docs.livekit.io/agents/)
-- [LiveKit Python SDK](https://github.com/livekit/python-sdks)
-- [LangGraph Documentation](https://langchain-ai.github.io/langgraph/)
-- [Google Cloud Speech-to-Text](https://cloud.google.com/speech-to-text)
-"""
-### Tools
-"""
-- [LiveKit Agents Playground](https://agents-playground.livekit.io/)
-- [LiveKit Cloud](https://cloud.livekit.io)
-- [Google AI Studio](https://aistudio.google.com/)
-"""
-### Troubleshooting
-"""
-1. **Agent won't connect:**
-   - Verify `LIVEKIT_URL` is correct (ws:// or wss://)
-   - Check API key and secret are valid
-   - Ensure LiveKit server is running
-
-2. **Token errors:**
-   - Verify API key and secret match server configuration
-   - Check token has not expired
-   - Ensure room grants are properly set
-
-3. **No audio:**
-   - Check microphone permissions in browser
-   - Verify Google API key for STT/TTS
-   - Check VAD is properly configured
-
-4. **LangGraph not responding:**
-   - Test LangGraph agent standalone first
-   - Check adapter properly extracts user message
-   - Verify graph invocation is working
-
----
-
-**Good luck!**
-"""
